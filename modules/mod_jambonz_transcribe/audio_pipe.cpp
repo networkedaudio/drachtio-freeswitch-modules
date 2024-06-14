@@ -56,7 +56,8 @@ int AudioPipe::lws_callback(struct lws *wsi,
     case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
       {
         AudioPipe* ap = findAndRemovePendingConnect(wsi);
-        lwsl_err("AudioPipe::lws_service_thread LWS_CALLBACK_CLIENT_CONNECTION_ERROR: %s\n", in ? (char *)in : "(null)"); 
+        int rc = lws_http_client_http_response(wsi);
+        lwsl_err("AudioPipe::lws_service_thread LWS_CALLBACK_CLIENT_CONNECTION_ERROR: %s, response status %d\n", in ? (char *)in : "(null)", rc); 
         if (ap) {
           ap->m_state = LWS_CLIENT_FAILED;
           ap->m_callback(ap->m_uuid.c_str(), ap->m_bugname.c_str(), AudioPipe::CONNECT_FAIL, (char *) in, ap->isFinished());
@@ -233,8 +234,8 @@ static const lws_retry_bo_t retry = {
     nullptr,   // retry_ms_table
     0,         // retry_ms_table_count
     0,         // conceal_count
-    40,         // secs_since_valid_ping
-    10,        // secs_since_valid_hangup
+    UINT16_MAX,         // secs_since_valid_ping
+    UINT16_MAX,        // secs_since_valid_hangup
     0          // jitter_percent
 };
 

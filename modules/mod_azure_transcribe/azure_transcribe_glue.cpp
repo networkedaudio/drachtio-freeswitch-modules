@@ -28,6 +28,10 @@ const char ALLOC_TAG[] = "drachtio";
 static bool hasDefaultCredentials = false;
 static bool sdkInitialized = false;
 static const char* sdkLog = std::getenv("AZURE_SDK_LOGFILE");
+static const char* proxyIP = std::getenv("JAMBONES_HTTP_PROXY_IP");
+static const char* proxyPort = std::getenv("JAMBONES_HTTP_PROXY_PORT");
+static const char* proxyUsername = std::getenv("JAMBONES_HTTP_PROXY_USERNAME");
+static const char* proxyPassword = std::getenv("JAMBONES_HTTP_PROXY_PASSWORD");
 
 class GStreamer {
 public:
@@ -79,6 +83,11 @@ public:
 			speechConfig->EnableAudioLogging();
 		}
 
+    if (nullptr != proxyIP && nullptr != proxyPort) {
+      switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(psession), SWITCH_LOG_DEBUG, "setting proxy: %s:%s\n", proxyIP, proxyPort);
+      speechConfig->SetProxy(proxyIP, atoi(proxyPort), proxyUsername, proxyPassword);
+    }
+
 		m_pushStream = AudioInputStream::CreatePushStream(format);
 		auto audioConfig = AudioConfig::FromStreamInput(m_pushStream);
 
@@ -119,6 +128,13 @@ public:
 		const char* timeout = switch_channel_get_variable(channel, "AZURE_INITIAL_SPEECH_TIMEOUT_MS");
 		if (timeout) properties.SetProperty(PropertyId::SpeechServiceConnection_InitialSilenceTimeoutMs, timeout);
 		else properties.SetProperty(PropertyId::SpeechServiceConnection_InitialSilenceTimeoutMs, DEFAULT_SPEECH_TIMEOUT);
+
+    const char* segmentationInterval = switch_channel_get_variable(channel, "AZURE_SPEECH_SEGMENTATION_SILENCE_TIMEOUT_MS");
+    if (segmentationInterval) {
+      switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(psession), SWITCH_LOG_DEBUG, "setting segmentation interval to %s ms\n", segmentationInterval);
+      properties.SetProperty(PropertyId::Speech_SegmentationSilenceTimeoutMs, segmentationInterval);
+    }
+
 		// recognition mode - readonly according to Azure docs: 
 		// https://docs.microsoft.com/en-us/javascript/api/microsoft-cognitiveservices-speech-sdk/propertyid?view=azure-node-latest
 		/*
